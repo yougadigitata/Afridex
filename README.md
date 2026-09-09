@@ -1,21 +1,56 @@
-```txt
+# AFRIDEX – Afrique Expertise
+
+## Présentation
+
+Site web vitrine professionnel du cabinet d'expertise **AFRIDEX** (Afrique Expertise), basé à Ouagadougou, Burkina Faso (quartier 14 Yaar).
+
+## URL de production
+
+- **Site web** : [https://afridex.pages.dev](https://afridex.pages.dev)
+- **Facebook** : [facebook.com/afridex](https://www.facebook.com/afridex)
+- **TikTok** : [tiktok.com/@afridex](https://www.tiktok.com/@afridex)
+
+## Sections du site
+
+- **Accueil** : Bannière hero avec statistiques, domaines d'intervention
+- **À propos** : Mission, vision, valeurs et présence géographique
+- **Services** : 6 domaines d'expertise détaillés
+  - Études & Consulting
+  - Formation & Renforcement des capacités
+  - Communication & Marketing social
+  - Appuis, Conseils & Accompagnement
+  - Intermédiation commerciale & financière
+  - Excursions & Immersions
+- **Réalisations** : Projets et missions réalisés
+- **Contact** : Formulaire de contact, coordonnées, réseaux sociaux
+- **Mentions légales** : Modale accessible depuis le footer
+
+## Stack technique
+
+- **Backend** : Hono (framework web léger)
+- **Frontend** : HTML5, CSS3 (custom), JavaScript vanilla
+- **Hébergement** : Cloudflare Pages
+- **Fonts** : Playfair Display + Inter (Google Fonts)
+- **Icons** : Font Awesome 6
+- **Build** : Vite
+
+## Développement local
+
+```bash
 npm install
-npm run dev
+npm run build
+npm run dev:sandbox
 ```
 
-```txt
+## Déploiement
+
+```bash
 npm run deploy
 ```
 
-[For generating/synchronizing types based on your Worker configuration run](https://developers.cloudflare.com/workers/wrangler/commands/#types):
+## Charte graphique
 
-```txt
-npm run cf-typegen
-```
-
-Pass the `CloudflareBindings` as generics when instantiation `Hono`:
-
-```ts
-// src/index.ts
-const app = new Hono<{ Bindings: CloudflareBindings }>()
-```
+- **Bleu principal** : #0A2E5C
+- **Vert accent** : #2E7D32
+- **Typographie titres** : Playfair Display
+- **Typographie corps** : Inter
