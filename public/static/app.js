@@ -1,281 +1,83 @@
-/**
- * AFRIDEX – Afrique Expertise
- * JavaScript principal – Interactions et animations
- */
-
 document.addEventListener('DOMContentLoaded', () => {
-  // --- Mobile Navigation ---
-  const navToggle = document.getElementById('navToggle');
-  const navMenu = document.getElementById('navMenu');
-  const navLinks = document.querySelectorAll('.nav-link, .nav-btn-cta');
+  const $ = (selector, scope = document) => scope.querySelector(selector)
+  const $$ = (selector, scope = document) => [...scope.querySelectorAll(selector)]
+  const navToggle = $('#navToggle')
+  const navMenu = $('#navMenu')
+  const header = $('#header')
 
-  if (navToggle && navMenu) {
-    navToggle.addEventListener('click', () => {
-      navToggle.classList.toggle('active');
-      navMenu.classList.toggle('open');
-      document.body.style.overflow = navMenu.classList.contains('open') ? 'hidden' : '';
-    });
+  navToggle?.addEventListener('click', () => {
+    const open = navMenu.classList.toggle('open')
+    navToggle.classList.toggle('active', open)
+    navToggle.setAttribute('aria-expanded', String(open))
+    document.body.style.overflow = open ? 'hidden' : ''
+  })
+  $$('.nav-link, .nav-btn-cta').forEach((link) => link.addEventListener('click', () => {
+    navMenu?.classList.remove('open'); navToggle?.classList.remove('active'); navToggle?.setAttribute('aria-expanded', 'false'); document.body.style.overflow = ''
+  }))
 
-    navLinks.forEach(link => {
-      link.addEventListener('click', () => {
-        navToggle.classList.remove('active');
-        navMenu.classList.remove('open');
-        document.body.style.overflow = '';
-      });
-    });
+  const onScroll = () => { header?.classList.toggle('scrolled', window.scrollY > 30); $('#scrollTopBtn')?.classList.toggle('visible', window.scrollY > 600) }
+  window.addEventListener('scroll', onScroll, { passive: true }); onScroll()
+  $('#scrollTopBtn')?.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }))
+
+  if (document.body.dataset.page === 'formations') setTimeout(() => $('#formations')?.scrollIntoView({ behavior: 'smooth' }), 80)
+
+  const courseCards = $$('.course-card')
+  const themeButtons = $$('.theme-card')
+  const search = $('#courseSearch')
+  const duration = $('#durationFilter')
+  const cost = $('#costFilter')
+  const count = $('#courseCount')
+  const empty = $('#emptyState')
+  let activeTheme = 'all'
+  const filterCourses = () => {
+    const term = (search?.value || '').trim().toLowerCase()
+    let visible = 0
+    courseCards.forEach((card) => {
+      const matchesTheme = activeTheme === 'all' || card.dataset.theme === activeTheme
+      const matchesDuration = !duration || duration.value === 'all' || card.dataset.duration === duration.value
+      const matchesCost = !cost || cost.value === 'all' || card.dataset.cost === cost.value
+      const matchesTerm = !term || card.dataset.title.includes(term)
+      const show = matchesTheme && matchesDuration && matchesCost && matchesTerm
+      card.classList.toggle('is-hidden', !show)
+      if (show) visible++
+    })
+    if (count) count.textContent = String(visible)
+    if (empty) empty.hidden = visible !== 0
+    $$('[data-table-row]').forEach((row, index) => { row.hidden = !!courseCards[index]?.classList.contains('is-hidden') })
   }
+  themeButtons.forEach((button) => button.addEventListener('click', () => {
+    activeTheme = activeTheme === button.dataset.theme ? 'all' : button.dataset.theme
+    themeButtons.forEach((item) => item.classList.toggle('active', item === button && activeTheme !== 'all'))
+    filterCourses()
+    $('#courseGrid')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }))
+  ;[search, duration, cost].forEach((control) => control?.addEventListener('input', filterCourses))
+  $('#resetFilters')?.addEventListener('click', () => { activeTheme = 'all'; if (search) search.value = ''; if (duration) duration.value = 'all'; if (cost) cost.value = 'all'; themeButtons.forEach((item) => item.classList.remove('active')); filterCourses() })
 
-  // --- Header Scroll Effect ---
-  const header = document.getElementById('header');
-  let lastScroll = 0;
+  $$('.course-cta').forEach((link) => link.addEventListener('click', () => {
+    const subject = $('#sujet'); const message = $('#message'); const course = link.dataset.course
+    if (subject) subject.value = 'formation'
+    if (message && course) message.value = `Bonjour, je souhaite obtenir des informations et demander une inscription à la formation : ${course}.`
+  }))
+  const query = new URLSearchParams(window.location.search)
+  if (query.get('sujet') === 'formation') $('#sujet').value = 'formation'
 
-  function handleScroll() {
-    const scrollY = window.scrollY;
+  const form = $('#contactForm'); const status = $('#formStatus')
+  form?.addEventListener('submit', async (event) => {
+    event.preventDefault(); const button = $('button[type="submit"]', form); const original = button.innerHTML
+    button.disabled = true; button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Envoi en cours…'
+    try {
+      const payload = Object.fromEntries(new FormData(form).entries())
+      const response = await fetch('/api/contact', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      const result = await response.json(); if (!response.ok || !result.success) throw new Error(result.error || 'Une erreur est survenue.')
+      status.className = 'form-status success'; status.textContent = result.message; form.reset()
+    } catch (error) { status.className = 'form-status error'; status.textContent = error.message || 'Impossible d’envoyer la demande.' }
+    button.disabled = false; button.innerHTML = original
+  })
 
-    // Add scrolled class
-    if (scrollY > 50) {
-      header.classList.add('scrolled');
-    } else {
-      header.classList.remove('scrolled');
-    }
-
-    // Scroll top button
-    const scrollTopBtn = document.getElementById('scrollTopBtn');
-    if (scrollTopBtn) {
-      if (scrollY > 500) {
-        scrollTopBtn.classList.add('visible');
-      } else {
-        scrollTopBtn.classList.remove('visible');
-      }
-    }
-
-    lastScroll = scrollY;
+  const reveal = $$('.service-card, .impact-grid article, .mosaic-card, .course-card')
+  if ('IntersectionObserver' in window && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    const observer = new IntersectionObserver((entries) => entries.forEach((entry) => { if (entry.isIntersecting) { entry.target.classList.add('visible'); observer.unobserve(entry.target) } }), { threshold: .08 })
+    reveal.forEach((element) => { element.classList.add('reveal'); observer.observe(element) })
   }
-
-  window.addEventListener('scroll', handleScroll, { passive: true });
-  handleScroll(); // Initial check
-
-  // --- Active Nav Link on Scroll ---
-  const sections = document.querySelectorAll('section[id]');
-
-  function updateActiveNav() {
-    const scrollY = window.scrollY + 120;
-
-    sections.forEach(section => {
-      const sectionTop = section.offsetTop;
-      const sectionHeight = section.offsetHeight;
-      const sectionId = section.getAttribute('id');
-
-      if (scrollY >= sectionTop && scrollY < sectionTop + sectionHeight) {
-        document.querySelectorAll('.nav-link').forEach(link => {
-          link.classList.remove('active');
-          if (link.getAttribute('data-section') === sectionId) {
-            link.classList.add('active');
-          }
-        });
-      }
-    });
-  }
-
-  window.addEventListener('scroll', updateActiveNav, { passive: true });
-
-  // --- Scroll to Top ---
-  const scrollTopBtn = document.getElementById('scrollTopBtn');
-  if (scrollTopBtn) {
-    scrollTopBtn.addEventListener('click', () => {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
-  }
-
-  // --- Smooth Scroll for Anchor Links ---
-  document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-    anchor.addEventListener('click', function (e) {
-      const targetId = this.getAttribute('href');
-      if (targetId === '#') return;
-
-      // Handle mentions legales modal
-      if (targetId === '#mentions-legales') {
-        e.preventDefault();
-        const modal = document.getElementById('mentionsLegalesModal');
-        if (modal) {
-          modal.style.display = 'flex';
-          document.body.style.overflow = 'hidden';
-        }
-        return;
-      }
-
-      // Handle politique-confidentialite (same modal for now)
-      if (targetId === '#politique-confidentialite') {
-        e.preventDefault();
-        const modal = document.getElementById('mentionsLegalesModal');
-        if (modal) {
-          modal.style.display = 'flex';
-          document.body.style.overflow = 'hidden';
-        }
-        return;
-      }
-
-      const target = document.querySelector(targetId);
-      if (target) {
-        e.preventDefault();
-        target.scrollIntoView({ behavior: 'smooth' });
-      }
-    });
-  });
-
-  // --- Modal ---
-  const modalClose = document.getElementById('modalClose');
-  const modalOverlay = document.getElementById('mentionsLegalesModal');
-
-  if (modalClose && modalOverlay) {
-    modalClose.addEventListener('click', () => {
-      modalOverlay.style.display = 'none';
-      document.body.style.overflow = '';
-    });
-
-    modalOverlay.addEventListener('click', (e) => {
-      if (e.target === modalOverlay) {
-        modalOverlay.style.display = 'none';
-        document.body.style.overflow = '';
-      }
-    });
-  }
-
-  // --- Contact Form ---
-  const contactForm = document.getElementById('contactForm');
-  const formStatus = document.getElementById('formStatus');
-
-  if (contactForm) {
-    contactForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-
-      const submitBtn = contactForm.querySelector('button[type="submit"]');
-      const originalText = submitBtn.innerHTML;
-      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Envoi en cours...';
-      submitBtn.disabled = true;
-
-      try {
-        const formData = {
-          nom: document.getElementById('nom').value.trim(),
-          email: document.getElementById('email').value.trim(),
-          telephone: document.getElementById('telephone').value.trim(),
-          sujet: document.getElementById('sujet').value,
-          message: document.getElementById('message').value.trim()
-        };
-
-        const response = await fetch('/api/contact', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(formData)
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-          formStatus.className = 'form-status success';
-          formStatus.innerHTML = '<i class="fas fa-check-circle"></i> ' + result.message;
-          formStatus.style.display = 'block';
-          contactForm.reset();
-        } else {
-          throw new Error(result.error || 'Erreur inconnue');
-        }
-      } catch (error) {
-        formStatus.className = 'form-status error';
-        formStatus.innerHTML = '<i class="fas fa-exclamation-circle"></i> ' + 
-          (error.message || 'Une erreur est survenue. Veuillez réessayer.');
-        formStatus.style.display = 'block';
-      }
-
-      submitBtn.innerHTML = originalText;
-      submitBtn.disabled = false;
-
-      // Hide status after 6 seconds
-      setTimeout(() => {
-        formStatus.style.display = 'none';
-      }, 6000);
-    });
-  }
-
-  // --- Reveal Animations (Intersection Observer) ---
-  const revealElements = document.querySelectorAll(
-    '.service-card, .project-card, .about-card, .contact-info-card, .contact-form-wrap, .about-presence'
-  );
-
-  if ('IntersectionObserver' in window) {
-    const revealObserver = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry, index) => {
-          if (entry.isIntersecting) {
-            setTimeout(() => {
-              entry.target.classList.add('visible');
-            }, index * 80);
-            revealObserver.unobserve(entry.target);
-          }
-        });
-      },
-      { threshold: 0.1, rootMargin: '0px 0px -50px 0px' }
-    );
-
-    revealElements.forEach(el => {
-      el.classList.add('reveal');
-      revealObserver.observe(el);
-    });
-  }
-
-  // --- Hero Particles ---
-  const particlesContainer = document.getElementById('heroParticles');
-  if (particlesContainer) {
-    for (let i = 0; i < 30; i++) {
-      const particle = document.createElement('div');
-      particle.className = 'hero-particle';
-      particle.style.left = Math.random() * 100 + '%';
-      particle.style.width = (Math.random() * 4 + 2) + 'px';
-      particle.style.height = particle.style.width;
-      particle.style.animationDuration = (Math.random() * 8 + 6) + 's';
-      particle.style.animationDelay = (Math.random() * 5) + 's';
-      particlesContainer.appendChild(particle);
-    }
-  }
-
-  // --- Counter Animation ---
-  const statNumbers = document.querySelectorAll('.stat-number');
-
-  if ('IntersectionObserver' in window && statNumbers.length > 0) {
-    const counterObserver = new IntersectionObserver(
-      (entries) => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            const el = entry.target;
-            const target = parseInt(el.getAttribute('data-count'), 10);
-            const text = el.textContent;
-            const suffix = text.replace(/[0-9]/g, '');
-            animateCounter(el, 0, target, 1500, suffix);
-            counterObserver.unobserve(el);
-          }
-        });
-      },
-      { threshold: 0.5 }
-    );
-
-    statNumbers.forEach(el => counterObserver.observe(el));
-  }
-
-  function animateCounter(element, start, end, duration, suffix) {
-    const startTime = performance.now();
-
-    function update(currentTime) {
-      const elapsed = currentTime - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      // Ease out
-      const easeOut = 1 - Math.pow(1 - progress, 3);
-      const current = Math.round(start + (end - start) * easeOut);
-      element.textContent = current + suffix;
-
-      if (progress < 1) {
-        requestAnimationFrame(update);
-      }
-    }
-
-    requestAnimationFrame(update);
-  }
-});
+})
